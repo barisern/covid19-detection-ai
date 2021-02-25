@@ -1,0 +1,10 @@
+{% extends "template.html" %}
+    
+{% block title %}About{% endblock %}
+
+{% block content %}
+<h1>Your CT Scan Image</h1>
+<img class="my-3" src="{{url_for('static', filename='uploads/{}'.format(image))}}" width="300" height="300">
+<h3>Result: <b style="color: {% if result=='COVID' %} red {% else %} green {% endif %} ">{{ result }}</b></h3>
+<button type="submit" class="btn btn-secondary mt-3" onclick="location.href='/'">Back to home</button>
+{% endblock %}
