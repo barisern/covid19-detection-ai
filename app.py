@@ -1,19 +1,24 @@
 from flask import Flask, render_template, url_for, request, redirect
 from werkzeug.utils import secure_filename
+
 import os
+import uuid
+import random
 
-import tensorflow as tf
 import cv2
+import tensorflow as tf
 
-model = tf.keras.models.load_model('./static/model/covid-ct-cnn-64x3-512-last-1614079489.h5')
 tf.get_logger().setLevel('ERROR')
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = './static/uploads/'
 
+model = tf.keras.models.load_model('./static/model/covid-ct-cnn-64x3-512-last-1614079489.h5')
+examples = os.listdir(os.path.join(app.config['UPLOAD_FOLDER'], 'examples'))
+
 @app.route('/')
 def home():
-    return render_template('index.html', page='home')
+    return render_template('index.html', page='home', examples=random.sample(examples, 3))
 
 @app.route('/about')
 def about():
@@ -32,26 +37,29 @@ def predict():
 
         if file and check_file_ext(file.filename):
             filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            file_ext = os.path.splitext(filename)[1]
 
-            res = predict(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            filename = str(uuid.uuid4()) + file_ext
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            
+            file.save(filepath)
+
+            res = predict(filepath)
 
             return render_template('predict.html', image=filename, result=res)
     else:
-        ex_file = request.args.get('example', default='ct1.png', type=str)
-        if ex_file == 'ct1.png' or ex_file == 'ct2.png' or ex_file == 'ct3.png':
-            res = predict(os.path.join(app.config['UPLOAD_FOLDER'], ex_file)) 
-            return render_template('predict.html', image=ex_file, result=res)
-            
-    return render_template('index.html', page='home')
+        ex_file = request.args.get('example', default=examples[0], type=str)
 
-
+        if ex_file in examples:
+            res = predict(os.path.join(app.config['UPLOAD_FOLDER'], 'examples', ex_file)) 
+            return render_template('predict.html', image=os.path.join('examples', ex_file), result=res)
+         
+    return redirect('/')
 
 # Other functions
 def check_file_ext(filename):
     valid_ext = set(['png', 'jpg', 'jpeg', 'jfif'])
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in valid_ext
-
 
 def prepare(path):
   IMG_SIZE = 200
